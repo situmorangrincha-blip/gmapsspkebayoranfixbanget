@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit Rute Salesman</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧭</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#EDF0F6; --surf:#FFFFFF; --surf2:#F4F6FB; --ink:#12203F; --mut:#5E6A82; --line:#DCE1EC;
+  --blue:#2F5BFF; --visit:#4F618A;
+  --gap:#E23D55; --singkat:#F08A24; --panjang:#C23B9B; --terlambat:#0E9AA7; --cepat:#B7791F; --overlap:#7C5CF0;
+  --shadow:0 1px 2px rgba(18,32,63,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0D1220; --surf:#151C2F; --surf2:#1B2338; --ink:#E7EBF5; --mut:#93A0BC; --line:#2A3452; --visit:#8FA2CF; --shadow:none; }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:13px;line-height:1.45;font-variant-numeric:tabular-nums}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1360px;margin:0 auto;padding:14px 16px 28px}
+
+/* header */
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.brand{font-weight:800;font-size:18px;letter-spacing:-.02em;margin-right:auto;display:flex;align-items:baseline;gap:10px}
+.brand small{font-weight:500;font-size:12px;color:var(--mut);letter-spacing:0}
+.btn{border:1px solid var(--line);background:var(--surf);border-radius:8px;padding:6px 12px;font-weight:600;font-size:12.5px;box-shadow:var(--shadow)}
+.btn:hover{border-color:var(--blue)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn[hidden]{display:none}
+
+/* filter bar */
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.field{display:flex;align-items:center;gap:6px;background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:0 4px 0 10px;box-shadow:var(--shadow)}
+.field span{color:var(--mut);font-size:12px}
+.field select{border:0;background:transparent;padding:6px 6px;font-weight:600;max-width:200px;outline-offset:0}
+.field select option{color:#12203F;background:#fff}
+.pill{font-size:12px;color:var(--mut);padding:4px 10px;border:1px dashed var(--line);border-radius:99px}
+.spacer{flex:1}
+
+/* settings */
+.settings{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 14px;box-shadow:var(--shadow)}
+.settings[hidden]{display:none}
+.settings label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mut);font-weight:500}
+.settings input,.settings select{border:1px solid var(--line);background:var(--surf2);border-radius:6px;padding:5px 8px;color:var(--ink);font-weight:600}
+
+/* kpi strip */
+.kpis{display:grid;grid-template-columns:1.1fr repeat(6,1fr);background:var(--surf);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow)}
+.kpi{all:unset;box-sizing:border-box;cursor:pointer;padding:10px 14px 10px 14px;border-left:1px solid var(--line);position:relative;display:flex;flex-direction:column;gap:1px;min-width:0}
+.kpi:first-child{border-left:0;cursor:default;background:var(--surf2)}
+.kpi:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+.kpi .n{font-size:24px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.kpi .l{font-size:12px;color:var(--mut);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi[data-t]::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c);opacity:.0}
+.kpi[data-t]:hover{background:var(--surf2)}
+.kpi[data-t].on{background:var(--surf2)}
+.kpi[data-t].on::before{opacity:1}
+.kpi[data-t] .n{color:var(--c)}
+.kpi .tag{position:absolute;right:10px;top:9px;font-size:10.5px;font-weight:700;color:var(--c);border:1px solid currentColor;border-radius:99px;padding:0 6px;opacity:.85}
+
+/* layout */
+.grid{display:grid;grid-template-columns:300px 1fr;gap:10px;align-items:start}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.card h3{margin:0;font-size:13px;font-weight:700;padding:10px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.card h3 em{font-style:normal;font-weight:500;color:var(--mut);font-size:12px}
+
+/* salesman list */
+.sl{max-height:640px;overflow:auto}
+.sr{all:unset;box-sizing:border-box;display:block;width:100%;padding:8px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.sr:last-child{border-bottom:0}
+.sr:hover,.sr.on{background:var(--surf2)}
+.sr.on{box-shadow:inset 3px 0 0 var(--blue)}
+.sr .r1{display:flex;justify-content:space-between;gap:8px;font-weight:700}
+.sr .r1 b{font-size:14px}
+.sr .r2{color:var(--mut);font-size:11.5px;margin:1px 0 5px}
+.stack{display:flex;height:6px;border-radius:99px;background:var(--surf2);overflow:hidden}
+.stack i{display:block;height:100%}
+
+/* tabs */
+.tabs{display:flex;gap:2px;padding:6px 8px;border-bottom:1px solid var(--line);align-items:center}
+.tab{all:unset;box-sizing:border-box;padding:5px 12px;border-radius:7px;font-weight:700;font-size:12.5px;color:var(--mut);cursor:pointer}
+.tab:hover{color:var(--ink)}
+.tab.on{background:var(--ink);color:var(--bg)}
+.tab:focus-visible{outline:2px solid var(--blue)}
+.tabs .info{margin-left:auto;color:var(--mut);font-size:12px;padding-right:6px}
+
+/* table */
+.tw{overflow:auto;max-height:640px}
+table{border-collapse:collapse;width:100%}
+th{position:sticky;top:0;background:var(--surf2);text-align:left;font-size:11.5px;color:var(--mut);font-weight:700;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap;z-index:1}
+td{padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surf2)}
+td.t{white-space:nowrap;color:var(--mut)}
+td.d{min-width:260px;color:var(--ink)}
+td .sub{color:var(--mut);font-size:11.5px}
+.badge{display:inline-block;white-space:nowrap;font-weight:700;font-size:11.5px;padding:1px 8px;border-radius:99px;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);border:1px solid color-mix(in srgb,var(--c) 30%,transparent)}
+.more{display:block;width:100%;padding:9px;border:0;border-top:1px solid var(--line);background:var(--surf2);font-weight:600;color:var(--mut)}
+
+/* timeline */
+.tl{max-height:640px;overflow:auto;padding:0 0 6px}
+.tl-axis,.tl-row{display:grid;grid-template-columns:128px 1fr 34px;align-items:center;gap:8px;padding:0 12px}
+.tl-axis{position:sticky;top:0;background:var(--surf);z-index:2;padding-top:7px;padding-bottom:3px;border-bottom:1px solid var(--line)}
+.tl-axis .ax{position:relative;height:14px;font-size:10.5px;color:var(--mut)}
+.tl-axis .ax span{position:absolute;transform:translateX(-50%)}
+.tl-row{padding-top:4px;padding-bottom:4px;border-bottom:1px dashed var(--line)}
+.tl-row:last-child{border-bottom:0}
+.tl-name{line-height:1.2;overflow:hidden}
+.tl-name b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-name span{font-size:11px;color:var(--mut)}
+.strip{position:relative;height:22px;background-image:linear-gradient(to right,var(--line) 1px,transparent 1px);background-size:calc(100% / var(--hrs)) 100%;border-radius:4px;background-color:var(--surf2)}
+.strip .v{position:absolute;top:5px;height:12px;background:var(--visit);border-radius:2px;min-width:3px}
+.strip .v.sg{background:var(--singkat)}
+.strip .v.pj{background:var(--panjang)}
+.strip .v.ov{box-shadow:0 -3px 0 var(--overlap)}
+.strip .gb{position:absolute;top:2px;bottom:2px;background:color-mix(in srgb,var(--gap) 22%,transparent);border-left:2px solid var(--gap);border-right:2px solid var(--gap);border-radius:2px}
+.strip .gb.nm{background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--gap) 40%,transparent) 0 3px,transparent 3px 6px)}
+.tl-cnt{font-weight:800;font-size:12px;text-align:right}
+.tl-cnt.z{color:var(--mut);font-weight:500}
+.legend{display:flex;gap:12px;flex-wrap:wrap;padding:8px 14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--mut)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+/* empty / drop */
+.drop{border:2px dashed var(--line);border-radius:16px;background:var(--surf);padding:44px 20px;text-align:center;margin-top:8px}
+.drop.over{border-color:var(--blue);background:var(--surf2)}
+.drop h2{margin:0 0 6px;font-size:20px;letter-spacing:-.02em}
+.drop p{margin:0 auto 14px;color:var(--mut);max-width:520px}
+.drop .cols{font-size:12px;margin-top:16px;color:var(--mut)}
+.err{background:color-mix(in srgb,var(--gap) 12%,transparent);border:1px solid var(--gap);color:var(--ink);border-radius:8px;padding:8px 12px;margin-bottom:10px}
+.err[hidden]{display:none}
+.empty{padding:30px;text-align:center;color:var(--mut)}
+
+@media (max-width:1000px){
+  .grid{grid-template-columns:1fr}
+  .sl{max-height:260px}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .kpi{border-top:1px solid var(--line)}
+  .kpi:nth-child(odd){border-left:0}
+  .tl-axis,.tl-row{grid-template-columns:96px 1fr 26px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .stack i{transition:width .25s}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="brand">Audit Rute Salesman <small id="fileInfo"></small></div>
+    <button class="btn" id="btnSet" hidden>Atur batas</button>
+    <button class="btn" id="btnExport" hidden>Export Excel</button>
+    <button class="btn primary" id="btnPick">Upload file</button>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
+  </div>
+
+  <div class="err" id="err" hidden></div>
+
+  <div id="settings" class="settings" hidden>
+    <label>Jeda antar toko maks (menit)<input type="number" id="s_gapMax" min="1"></label>
+    <label>Durasi singkat di bawah (menit)<input type="number" id="s_durMin" min="0"></label>
+    <label>Durasi panjang di atas (menit)<input type="number" id="s_durMax" min="1"></label>
+    <label>Check-in pertama lewat dari jam<input type="time" id="s_startLate"></label>
+    <label>Check-out terakhir sebelum jam<input type="time" id="s_endEarly"></label>
+    <label>Alasan yang dianggap sah untuk durasi singkat
+      <select id="s_alasanMode">
+        <option value="tutup">Hanya Toko Tutup</option>
+        <option value="any">Semua alasan yang terisi</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="empty">
+    <div class="drop" id="drop">
+      <h2>Tarik file Report Route Feedback ke sini</h2>
+      <p>Web ini membaca check-in dan check-out per salesman, lalu menandai jeda yang terlalu lama, durasi yang tidak wajar, dan jam kerja yang janggal. File diproses di browser dan tidak dikirim ke server.</p>
+      <button class="btn primary" id="btnPick2">Pilih file Excel</button>
+      <div class="cols">Kolom yang dibaca: Tanggal, Nama Salesman, Nama Customer, Alasan, Waktu Mulai, Waktu Akhir, Durasi</div>
+    </div>
+  </div>
+
+  <div id="app" hidden>
+    <div class="bar">
+      <label class="field"><span>Salesman</span><select id="fSales"></select></label>
+      <label class="field"><span>Tanggal</span><select id="fDate"></select></label>
+      <button class="btn" id="btnReset">Reset filter</button>
+      <span class="spacer"></span>
+      <span class="pill" id="ignInfo"></span>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Salesman <em>urut jumlah temuan</em></h3>
+        <div class="sl" id="sl"></div>
+      </div>
+      <div class="card">
+        <div class="tabs">
+          <button class="tab on" data-tab="temuan">Temuan</button>
+          <button class="tab" data-tab="timeline">Lini masa</button>
+          <span class="info" id="tabInfo"></span>
+        </div>
+        <div id="main"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*CORE_START*/
+const TYPES = {
+  gap:       {label:'Jeda lama',       color:'var(--gap)',       sev:'warn'},
+  singkat:   {label:'Durasi singkat',  color:'var(--singkat)',   sev:'warn'},
+  panjang:   {label:'Durasi panjang',  color:'var(--panjang)',   sev:'warn'},
+  terlambat: {label:'Mulai terlambat', color:'var(--terlambat)', sev:'warn'},
+  cepat:     {label:'Selesai cepat',   color:'var(--cepat)',     sev:'warn'},
+  overlap:   {label:'Overlap',         color:'var(--overlap)',   sev:'note'}
+};
+const DEFAULT_CFG = {gapMax:60, durMin:3, durMax:120, startLate:600, endEarly:840, alasanMode:'tutup'};
+
+const pad = (n,l=2)=>String(n).padStart(l,'0');
+function toMin(v){
+  if(v==null||v==='') return null;
+  if(v instanceof Date) return v.getHours()*60+v.getMinutes()+v.getSeconds()/60;
+  if(typeof v==='number') return Math.round((v%1)*86400)/60;
+  const m=String(v).trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(!m) return null;
+  return (+m[1])*60+(+m[2])+(+(m[3]||0))/60;
+}
+function toDateKey(v){
+  if(v==null||v==='') return null;
+  if(typeof v==='number'){ const p=XLSX.SSF.parse_date_code(v); return p?`${p.y}-${pad(p.m)}-${pad(p.d)}`:null; }
+  if(v instanceof Date) return `${v.getFullYear()}-${pad(v.getMonth()+1)}-${pad(v.getDate())}`;
+  const s=String(v).trim(); let m;
+  if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  if((m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/))) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+  return null;
+}
+const fmtT = m => { const t=Math.floor(m+1e-6); return `${pad(Math.floor(t/60))}:${pad(t%60)}`; };
+const fmtDur = m => { const t=Math.round(m); if(t<60) return `${t} mnt`; const h=Math.floor(t/60), r=t%60; return r?`${h}j ${r}m`:`${h}j`; };
+const norm = k => String(k).trim().toLowerCase();
+
+function parseSheet(rows){
+  if(!rows.length) throw new Error('Sheet kosong.');
+  const keys = Object.keys(rows[0]); const map={};
+  keys.forEach(k=>map[norm(k)]=k);
+  const need=['tanggal','nama salesman','waktu mulai','waktu akhir'];
+  const miss=need.filter(n=>!(n in map));
+  if(miss.length) throw new Error('Kolom tidak ditemukan: '+miss.join(', ')+'. Pastikan memakai template Report Route Feedback.');
+  const g = (r,n)=> map[n]!==undefined ? r[map[n]] : '';
+  const visits=[]; let ignored=0, invalid=0;
+  rows.forEach(r=>{
+    const date=toDateKey(g(r,'tanggal')), sales=String(g(r,'nama salesman')).trim();
+    const s=toMin(g(r,'waktu mulai')), e=toMin(g(r,'waktu akhir'));
+    if(!date||!sales||s==null||e==null){ invalid++; return; }
+    if(s===0){ ignored++; return; }               // jam 00:00 diabaikan
+    let dur=toMin(g(r,'durasi')); if(dur==null) dur=Math.max(0,e-s);
+    visits.push({date,sales,s,e,dur,
+      cust:String(g(r,'nama customer')).trim()||'(tanpa nama)',
+      cid:String(g(r,'id customer')).trim(),
+      alasan:String(g(r,'alasan')).trim()});
+  });
+  return {visits, ignored, invalid, total:rows.length};
+}
+
+function analyze(visits, cfg){
+  const groups={};
+  visits.forEach(v=>{ (groups[v.date+'|'+v.sales]??=({key:v.date+'|'+v.sales,date:v.date,sales:v.sales,visits:[]})).visits.push(v); });
+  const list=Object.values(groups).sort((a,b)=>a.date.localeCompare(b.date)||a.sales.localeCompare(b.sales));
+  const findings=[];
+  const add=(type,g,time,cust,detail)=>findings.push({type,sev:TYPES[type].sev,date:g.date,sales:g.sales,time,cust,detail,gk:g.key});
+  const okReason = a => cfg.alasanMode==='any' ? a!=='' : /tutup/i.test(a);
+  list.forEach(g=>{
+    g.visits.sort((a,b)=>a.s-b.s||a.e-b.e);
+    g.flags=new Set();
+    const seen=new Set();
+    g.visits.forEach((v,i)=>{
+      v.flags=[]; v.gap=null; v.overlap=false;
+      const prev=g.visits[i-1];
+      if(prev){
+        v.gap=v.s-prev.e;
+        if(v.gap>cfg.gapMax){
+          add('gap',g,v.s,v.cust,`Jeda ${fmtDur(v.gap)} dari ${prev.cust} (out ${fmtT(prev.e)}) ke check-in ${fmtT(v.s)}`);
+          v.flags.push('gap');
+        } else if(v.gap<0){
+          v.overlap=true; v.flags.push('overlap');
+          const rev = (v.cid && seen.has(v.cid)) || (!v.cid && seen.has(v.cust));
+          add('overlap',g,v.s,v.cust,`Check-in ${fmtT(v.s)} sebelum check-out ${prev.cust} (${fmtT(prev.e)}), tumpang tindih ${fmtDur(-v.gap)}`+(rev?'. Toko ini sudah dikunjungi tadi, kemungkinan kunjungan ulang':''));
+        }
+      }
+      if(v.dur<cfg.durMin && !okReason(v.alasan)){
+        add('singkat',g,v.s,v.cust,`Durasi ${fmtDur(v.dur)}, `+(v.alasan?`alasan: ${v.alasan}`:'tanpa alasan'));
+        v.flags.push('singkat');
+      }
+      if(v.dur>cfg.durMax){
+        add('panjang',g,v.s,v.cust,`Durasi ${fmtDur(v.dur)} (in ${fmtT(v.s)}, out ${fmtT(v.e)})`);
+        v.flags.push('panjang');
+      }
+      seen.add(v.cid||v.cust);
+    });
+    const first=g.visits[0], lastEnd=Math.max(...g.visits.map(v=>v.e)), last=g.visits.reduce((a,b)=>b.e>=a.e?b:a);
+    if(first.s>cfg.startLate) add('terlambat',g,first.s,first.cust,`Check-in pertama jam ${fmtT(first.s)} (batas ${fmtT(cfg.startLate)})`);
+    if(lastEnd<cfg.endEarly) add('cepat',g,lastEnd,last.cust,`Check-out terakhir jam ${fmtT(lastEnd)} (batas ${fmtT(cfg.endEarly)})`);
+    g.visits.forEach(v=>v.flags.forEach(f=>g.flags.add(f)));
+  });
+  findings.sort((a,b)=>a.date.localeCompare(b.date)||a.sales.localeCompare(b.sales)||a.time-b.time);
+  return {groups:list, findings};
+}
+/*CORE_END*/
+
+/* ---------- UI ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const BULAN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const fmtD=k=>{const [y,m,d]=k.split('-');return `${+d} ${BULAN[+m-1]}`;};
+const fmtDLong=k=>{const [y,m,d]=k.split('-');return `${+d} ${BULAN[+m-1]} ${y}`;};
+const nf=n=>n.toLocaleString('id-ID');
+
+function loadCfg(){ try{ return Object.assign({},DEFAULT_CFG,JSON.parse(localStorage.getItem('audit-rute-cfg')||'{}')); }catch(e){ return {...DEFAULT_CFG}; } }
+function saveCfg(){ try{ localStorage.setItem('audit-rute-cfg',JSON.stringify(state.cfg)); }catch(e){} }
+
+const state={cfg:loadCfg(), visits:null, meta:null, res:null, f:{sales:'',date:'',type:''}, tab:'temuan', showAll:false, fileName:''};
+
+/* file handling */
+function showErr(msg){ const e=$('#err'); e.textContent=msg; e.hidden=!msg; }
+async function handleFile(file){
+  if(!file) return;
+  showErr('');
+  try{
+    if(typeof XLSX==='undefined') throw new Error('Library pembaca Excel belum termuat. Cek koneksi internet lalu muat ulang halaman.');
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    let parsed=null, lastErr=null;
+    for(const name of wb.SheetNames){
+      try{ parsed=parseSheet(XLSX.utils.sheet_to_json(wb.Sheets[name],{defval:'',raw:true})); break; }
+      catch(e){ lastErr=e; }
+    }
+    if(!parsed) throw lastErr||new Error('Data tidak terbaca.');
+    if(!parsed.visits.length) throw new Error('Tidak ada kunjungan valid di file ini.');
+    state.visits=parsed.visits; state.meta=parsed; state.fileName=file.name;
+    state.f={sales:'',date:'',type:''}; state.showAll=false;
+    recompute();
+    $('#empty').hidden=true; $('#app').hidden=false;
+    $('#btnSet').hidden=false; $('#btnExport').hidden=false; $('#btnPick').textContent='Ganti file';
+    $('#fileInfo').textContent=`${file.name}`;
+    buildSelects(); render();
+  }catch(e){ showErr(e.message||String(e)); }
+}
+function recompute(){ state.res=analyze(state.visits,state.cfg); }
+
+/* filtering helpers */
+const inScope=(x,skipSales=false)=>(skipSales||!state.f.sales||x.sales===state.f.sales)&&(!state.f.date||x.date===state.f.date);
+
+function buildSelects(){
+  const sales=[...new Set(state.visits.map(v=>v.sales))].sort((a,b)=>a.localeCompare(b));
+  const dates=[...new Set(state.visits.map(v=>v.date))].sort();
+  $('#fSales').innerHTML='<option value="">Semua ('+sales.length+')</option>'+sales.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  $('#fDate').innerHTML='<option value="">Semua ('+dates.length+' hari)</option>'+dates.map(d=>`<option value="${d}">${fmtDLong(d)}</option>`).join('');
+  $('#fSales').value=state.f.sales; $('#fDate').value=state.f.date;
+}
+
+/* render */
+function render(){
+  const {meta,res,f}=state;
+  $('#ignInfo').textContent=`${nf(meta.total)} baris · ${nf(meta.ignored)} baris jam 00:00 diabaikan`;
+  renderKPI(); renderSales(); renderMain();
+}
+
+function renderKPI(){
+  const vis=state.visits.filter(v=>inScope(v)).length;
+  const fl=state.res.findings.filter(x=>inScope(x));
+  const cnt={}; Object.keys(TYPES).forEach(t=>cnt[t]=0); fl.forEach(x=>cnt[x.type]++);
+  let h=`<div class="kpi"><span class="n">${nf(vis)}</span><span class="l">Kunjungan valid</span></div>`;
+  Object.entries(TYPES).forEach(([t,m])=>{
+    h+=`<button class="kpi ${state.f.type===t?'on':''}" data-t="${t}" style="--c:${m.color}" aria-pressed="${state.f.type===t}"><span class="n">${nf(cnt[t])}</span><span class="l">${m.label}</span>${m.sev==='note'?'<span class="tag">catatan</span>':''}</button>`;
+  });
+  $('#kpis').innerHTML=h;
+}
+
+function renderSales(){
+  const by={};
+  state.visits.forEach(v=>{ if(!inScope(v,true)) return; (by[v.sales]??={sales:v.sales,vis:0,days:new Set(),c:{}}); by[v.sales].vis++; by[v.sales].days.add(v.date); });
+  state.res.findings.forEach(x=>{ if(!inScope(x,true)||x.sev!=='warn') return; const s=by[x.sales]; if(s) s.c[x.type]=(s.c[x.type]||0)+1; });
+  const arr=Object.values(by).map(s=>({...s,tot:Object.values(s.c).reduce((a,b)=>a+b,0)})).sort((a,b)=>b.tot-a.tot||a.sales.localeCompare(b.sales));
+  const mx=Math.max(1,...arr.map(s=>s.tot));
+  $('#sl').innerHTML=arr.map(s=>{
+    const seg=Object.keys(TYPES).filter(t=>s.c[t]).map(t=>`<i style="width:${s.c[t]/mx*100}%;background:${TYPES[t].color}" title="${TYPES[t].label}: ${s.c[t]}"></i>`).join('');
+    return `<button class="sr ${state.f.sales===s.sales?'on':''}" data-s="${esc(s.sales)}"><div class="r1"><span>${esc(s.sales)}</span><b>${s.tot}</b></div><div class="r2">${s.days.size} hari · ${nf(s.vis)} kunjungan</div><div class="stack">${seg}</div></button>`;
+  }).join('')||'<div class="empty">Tidak ada data.</div>';
+}
+
+function filteredFindings(){ return state.res.findings.filter(x=>inScope(x)&&(!state.f.type||x.type===state.f.type)); }
+function filteredGroups(){
+  return state.res.groups.filter(g=>inScope(g)&&(!state.f.type||g.flags.has(state.f.type)||(state.f.type==='terlambat'||state.f.type==='cepat')&&state.res.findings.some(x=>x.gk===g.key&&x.type===state.f.type)));
+}
+
+function renderMain(){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===state.tab));
+  const fl=filteredFindings();
+  $('#tabInfo').textContent = state.tab==='temuan' ? `${nf(fl.length)} temuan` : '';
+  $('#main').innerHTML = state.tab==='temuan' ? tableHTML(fl) : timelineHTML();
+}
+
+function tableHTML(fl){
+  if(!fl.length) return '<div class="empty">Tidak ada temuan untuk filter ini.</div>';
+  const LIM=400, rows=state.showAll?fl:fl.slice(0,LIM);
+  let h='<div class="tw"><table><thead><tr><th>Tanggal</th><th>Salesman</th><th>Jenis</th><th>Detail</th><th>Toko</th><th>Jam</th></tr></thead><tbody>';
+  rows.forEach(x=>{
+    h+=`<tr><td class="t">${fmtD(x.date)}</td><td>${esc(x.sales)}</td><td><span class="badge" style="--c:${TYPES[x.type].color}">${TYPES[x.type].label}</span></td><td class="d">${esc(x.detail)}</td><td>${esc(x.cust)}</td><td class="t">${fmtT(x.time)}</td></tr>`;
+  });
+  h+='</tbody></table></div>';
+  if(!state.showAll&&fl.length>LIM) h+=`<button class="more" id="btnMore">Tampilkan semua ${nf(fl.length)} temuan</button>`;
+  return h;
+}
+
+function timelineHTML(){
+  const gs=filteredGroups();
+  if(!gs.length) return '<div class="empty">Tidak ada rute untuk filter ini.</div>';
+  const lo=Math.max(0,Math.floor(Math.min(...state.visits.map(v=>v.s))/60)*60);
+  const hi=Math.min(1440,Math.ceil(Math.max(...state.visits.map(v=>v.e))/60)*60);
+  const span=Math.max(60,hi-lo), hrs=span/60;
+  const pct=m=>(m-lo)/span*100;
+  const cfg=state.cfg;
+  let ax=''; for(let m=lo;m<=hi;m+=60){ if(hrs>14 && ((m-lo)/60)%2) continue; ax+=`<span style="left:${pct(m)}%">${pad(m/60)}</span>`; }
+  const LIM=80, shown=gs.slice(0,LIM);
+  let h=`<div class="tl"><div class="tl-axis"><div></div><div class="ax">${ax}</div><div></div></div>`;
+  shown.forEach(g=>{
+    let b='';
+    g.visits.forEach((v,i)=>{
+      const p=g.visits[i-1];
+      if(p&&v.gap>cfg.gapMax) b+=`<i class="gb" style="left:${pct(p.e)}%;width:${(v.s-p.e)/span*100}%" title="Jeda ${fmtDur(v.gap)}: ${esc(p.cust)} (out ${fmtT(p.e)}) ke ${esc(v.cust)} (in ${fmtT(v.s)})"></i>`;
+      const cls=v.flags.includes('panjang')?'pj':v.flags.includes('singkat')?'sg':'';
+      b+=`<b class="v ${cls} ${v.overlap?'ov':''}" style="left:${pct(v.s)}%;width:${Math.max((v.e-v.s)/span*100,0)}%" title="${esc(v.cust)} · ${fmtT(v.s)} sampai ${fmtT(v.e)} (${fmtDur(v.dur)})${v.alasan?' · '+esc(v.alasan):''}"></b>`;
+    });
+    const n=state.res.findings.filter(x=>x.gk===g.key&&x.sev==='warn').length;
+    h+=`<div class="tl-row"><div class="tl-name"><b>${esc(g.sales)}</b><span>${fmtD(g.date)} · ${g.visits.length} toko</span></div><div class="strip" style="--hrs:${hrs}">${b}</div><div class="tl-cnt ${n?'':'z'}">${n||'0'}</div></div>`;
+  });
+  h+='</div>';
+  if(gs.length>LIM) h+=`<div class="legend">Menampilkan ${LIM} dari ${gs.length} rute. Persempit dengan filter salesman atau tanggal.</div>`;
+  h+=`<div class="legend"><span><i style="background:var(--visit)"></i>Kunjungan</span><span><i style="background:var(--singkat)"></i>Durasi singkat</span><span><i style="background:var(--panjang)"></i>Durasi panjang</span><span><i style="background:color-mix(in srgb,var(--gap) 35%,transparent);border:1px solid var(--gap)"></i>Jeda lama</span><span><i style="background:var(--overlap)"></i>Overlap</span><span>Angka di kanan: jumlah temuan rute itu</span></div>`;
+  return h;
+}
+
+/* export */
+function exportXlsx(){
+  const fl=filteredFindings();
+  const rows=fl.map(x=>({Tanggal:x.date,Salesman:x.sales,Jenis:TYPES[x.type].label,Kategori:x.sev==='note'?'Catatan':'Kejanggalan',Detail:x.detail,Toko:x.cust,Jam:fmtT(x.time)}));
+  const sum={};
+  fl.forEach(x=>{ const s=(sum[x.sales]??={Salesman:x.sales}); const k=TYPES[x.type].label; s[k]=(s[k]||0)+1; });
+  const cols=['Salesman',...Object.values(TYPES).map(t=>t.label)];
+  const sumRows=Object.values(sum).map(s=>{ const o={}; cols.forEach(c=>o[c]=c==='Salesman'?s[c]:(s[c]||0)); return o; });
+  const wb=XLSX.utils.book_new();
+  const w1=XLSX.utils.json_to_sheet(rows); w1['!cols']=[{wch:11},{wch:24},{wch:16},{wch:13},{wch:90},{wch:32},{wch:7}];
+  const w2=XLSX.utils.json_to_sheet(sumRows,{header:cols}); w2['!cols']=cols.map((c,i)=>({wch:i?15:24}));
+  XLSX.utils.book_append_sheet(wb,w1,'Temuan'); XLSX.utils.book_append_sheet(wb,w2,'Ringkasan');
+  XLSX.writeFile(wb,'Kejanggalan_Rute_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+/* settings */
+const hm=m=>`${pad(Math.floor(m/60))}:${pad(m%60)}`;
+function syncSettings(){
+  const c=state.cfg;
+  $('#s_gapMax').value=c.gapMax; $('#s_durMin').value=c.durMin; $('#s_durMax').value=c.durMax;
+  $('#s_startLate').value=hm(c.startLate); $('#s_endEarly').value=hm(c.endEarly); $('#s_alasanMode').value=c.alasanMode;
+}
+function readSettings(){
+  const n=(id,d)=>{const v=parseFloat($(id).value); return isNaN(v)?d:v;};
+  const t=(id,d)=>{const v=toMin($(id).value); return v==null?d:v;};
+  const c=state.cfg;
+  c.gapMax=n('#s_gapMax',c.gapMax); c.durMin=n('#s_durMin',c.durMin); c.durMax=n('#s_durMax',c.durMax);
+  c.startLate=t('#s_startLate',c.startLate); c.endEarly=t('#s_endEarly',c.endEarly); c.alasanMode=$('#s_alasanMode').value;
+  saveCfg(); if(state.visits){ recompute(); render(); }
+}
+
+/* events */
+$('#btnPick').onclick=$('#btnPick2').onclick=()=>$('#file').click();
+$('#file').onchange=e=>{ handleFile(e.target.files[0]); e.target.value=''; };
+$('#btnSet').onclick=()=>{ const s=$('#settings'); s.hidden=!s.hidden; };
+$('#btnExport').onclick=exportXlsx;
+$('#btnReset').onclick=()=>{ state.f={sales:'',date:'',type:''}; $('#fSales').value=''; $('#fDate').value=''; state.showAll=false; render(); };
+$('#fSales').onchange=e=>{ state.f.sales=e.target.value; state.showAll=false; render(); };
+$('#fDate').onchange=e=>{ state.f.date=e.target.value; state.showAll=false; render(); };
+$('#kpis').onclick=e=>{ const b=e.target.closest('[data-t]'); if(!b) return; state.f.type=state.f.type===b.dataset.t?'':b.dataset.t; state.showAll=false; render(); };
+$('#sl').onclick=e=>{ const b=e.target.closest('[data-s]'); if(!b) return; state.f.sales=state.f.sales===b.dataset.s?'':b.dataset.s; $('#fSales').value=state.f.sales; state.showAll=false; render(); };
+document.querySelector('.tabs').onclick=e=>{ const b=e.target.closest('[data-tab]'); if(!b) return; state.tab=b.dataset.tab; renderMain(); };
+$('#main').onclick=e=>{ if(e.target.id==='btnMore'){ state.showAll=true; renderMain(); } };
+document.querySelectorAll('.settings input,.settings select').forEach(el=>el.addEventListener('change',readSettings));
+syncSettings();
+
+['dragenter','dragover'].forEach(ev=>window.addEventListener(ev,e=>{ e.preventDefault(); $('#drop').classList.add('over'); }));
+['dragleave','drop'].forEach(ev=>window.addEventListener(ev,e=>{ e.preventDefault(); $('#drop').classList.remove('over'); }));
+window.addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files[0]; if(f) handleFile(f); });
+</script>
+</body>
+</html>
